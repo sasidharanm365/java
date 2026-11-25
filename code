@@ -1,0 +1,284 @@
+import java.awt.*;
+import java.awt.event.*;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.ResolverStyle;
+import java.util.ArrayList;
+
+public class VisitorManagementAWT extends Frame implements ActionListener {
+
+    private final ArrayList<Visitor> visitors = new ArrayList<>();
+    private static final DateTimeFormatter DATE_FMT =
+            DateTimeFormatter.ofPattern("dd/MM/uuuu").withResolverStyle(ResolverStyle.STRICT);
+
+    private final TextField idField = new TextField(20);
+    private final TextField nameField = new TextField(20);
+    private final TextField purposeField = new TextField(20);
+    private final TextField dateField = new TextField(20);
+    private final TextField contactField = new TextField(20);
+
+    private final Button addBtn = new Button("Add Visitor");
+    private final Button viewBtn = new Button("View All");
+    private final Button searchBtn = new Button("Search by ID");
+    private final Button deleteBtn = new Button("Delete by ID");
+    private final Button clearBtn = new Button("Clear Fields");
+    private final Button exitBtn = new Button("Exit");
+
+    private final TextArea outputArea = new TextArea(12, 60);
+
+    public VisitorManagementAWT() {
+        super("Visitor Management System (AWT)");
+
+        Panel form = new Panel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(6, 6, 6, 6);
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+
+        int row = 0;
+        addFormRow(form, gbc, row++, "Visitor ID (integer):", idField);
+        addFormRow(form, gbc, row++, "Name:", nameField);
+        addFormRow(form, gbc, row++, "Purpose:", purposeField);
+        addFormRow(form, gbc, row++, "Date (DD/MM/YYYY):", dateField);
+        addFormRow(form, gbc, row++, "Contact (10 digits):", contactField);
+
+        Panel buttons = new Panel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        buttons.add(addBtn);
+        buttons.add(viewBtn);
+        buttons.add(searchBtn);
+        buttons.add(deleteBtn);
+        buttons.add(clearBtn);
+        buttons.add(exitBtn);
+
+        addBtn.addActionListener(this);
+        viewBtn.addActionListener(this);
+        searchBtn.addActionListener(this);
+        deleteBtn.addActionListener(this);
+        clearBtn.addActionListener(this);
+        exitBtn.addActionListener(this);
+
+        setLayout(new BorderLayout(10, 10));
+        add(form, BorderLayout.NORTH);
+
+        Panel middle = new Panel(new BorderLayout());
+        middle.add(buttons, BorderLayout.NORTH);
+        middle.add(outputArea, BorderLayout.CENTER);
+        add(middle, BorderLayout.CENTER);
+
+        setSize(760, 520);
+        setLocationRelativeTo(null);
+        setVisible(true);
+
+        addWindowListener(new WindowAdapter() {
+            public void windowClosing(WindowEvent e) {
+                dispose();
+                System.exit(0);
+            }
+        });
+
+        outputArea.setEditable(false);
+        outputArea.setFont(new Font("Monospaced", Font.PLAIN, 12));
+    }
+
+    private void addFormRow(Panel panel, GridBagConstraints gbc, int row, String labelText, Component field) {
+        gbc.gridx = 0;
+        gbc.gridy = row;
+        gbc.weightx = 0;
+        panel.add(new Label(labelText), gbc);
+
+        gbc.gridx = 1;
+        gbc.gridy = row;
+        gbc.weightx = 1;
+        panel.add(field, gbc);
+    }
+
+    private void handleAdd() {
+        String idText = idField.getText().trim();
+        if (idText.isEmpty()) {
+            showMessage("Visitor ID is required (integer).");
+            return;
+        }
+        int id;
+        try {
+            id = Integer.parseInt(idText);
+            if (id < 0) {
+                showMessage("Visitor ID must be non-negative.");
+                return;
+            }
+        } catch (NumberFormatException e) {
+            showMessage("Invalid Visitor ID. Please enter an integer.");
+            return;
+        }
+
+        for (Visitor v : visitors) {
+            if (v.id == id) {
+                showMessage("Visitor ID already exists. Use a unique ID.");
+                return;
+            }
+        }
+
+        String name = nameField.getText().trim();
+        if (name.isEmpty() || !name.matches("[A-Za-z ]+")) {
+            showMessage("Name should contain only letters and spaces.");
+            return;
+        }
+
+        String purpose = purposeField.getText().trim();
+        if (purpose.isEmpty()) {
+            showMessage("Purpose is required.");
+            return;
+        }
+
+        String dateText = dateField.getText().trim();
+        LocalDate visitDate;
+        try {
+            visitDate = LocalDate.parse(dateText, DATE_FMT);
+        } catch (Exception ex) {
+            showMessage("Invalid date. Use DD/MM/YYYY.");
+            return;
+        }
+
+        String contact = contactField.getText().trim();
+        if (!contact.matches("\\d{10}")) {
+            showMessage("Invalid contact. Enter exactly 10 digits.");
+            return;
+        }
+
+        visitors.add(new Visitor(id, name, purpose, visitDate.format(DATE_FMT), contact));
+        showMessage("Visitor added successfully!");
+        clearFields();
+    }
+
+    private void handleViewAll() {
+        if (visitors.isEmpty()) {
+            outputArea.setText("No visitors found!\n");
+            return;
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append("===== Visitor List =====\n");
+        for (Visitor v : visitors) {
+            sb.append("Visitor ID : ").append(v.id).append("\n");
+            sb.append("Name       : ").append(v.name).append("\n");
+            sb.append("Purpose    : ").append(v.purpose).append("\n");
+            sb.append("Visit Date : ").append(v.date).append("\n");
+            sb.append("Contact No.: ").append(v.contact).append("\n");
+            sb.append("-------------------------------\n");
+        }
+        outputArea.setText(sb.toString());
+    }
+
+    private void handleSearch() {
+        String idText = idField.getText().trim();
+        if (idText.isEmpty()) {
+            showMessage("Enter Visitor ID in the ID field to search.");
+            return;
+        }
+        int id;
+        try {
+            id = Integer.parseInt(idText);
+        } catch (NumberFormatException e) {
+            showMessage("Invalid Visitor ID.");
+            return;
+        }
+        for (Visitor v : visitors) {
+            if (v.id == id) {
+                StringBuilder sb = new StringBuilder();
+                sb.append("Visitor Found:\n");
+                sb.append("Visitor ID : ").append(v.id).append("\n");
+                sb.append("Name       : ").append(v.name).append("\n");
+                sb.append("Purpose    : ").append(v.purpose).append("\n");
+                sb.append("Visit Date : ").append(v.date).append("\n");
+                sb.append("Contact No.: ").append(v.contact).append("\n");
+                sb.append("-------------------------------\n");
+                outputArea.setText(sb.toString());
+                return;
+            }
+        }
+        showMessage("Visitor not found!");
+    }
+
+    private void handleDelete() {
+        String idText = idField.getText().trim();
+        if (idText.isEmpty()) {
+            showMessage("Enter Visitor ID in the ID field to delete.");
+            return;
+        }
+        int id;
+        try {
+            id = Integer.parseInt(idText);
+        } catch (NumberFormatException e) {
+            showMessage("Invalid Visitor ID.");
+            return;
+        }
+        for (int i = 0; i < visitors.size(); i++) {
+            if (visitors.get(i).id == id) {
+                visitors.remove(i);
+                showMessage("Visitor deleted successfully!");
+                outputArea.setText("");
+                return;
+            }
+        }
+        showMessage("Visitor not found!");
+    }
+
+    private void clearFields() {
+        idField.setText("");
+        nameField.setText("");
+        purposeField.setText("");
+        dateField.setText("");
+        contactField.setText("");
+    }
+
+    private void showMessage(String message) {
+        Dialog dlg = new Dialog(this, "Message", true);
+        dlg.setLayout(new BorderLayout(10, 10));
+        Label msg = new Label(message);
+        msg.setAlignment(Label.CENTER);
+        dlg.add(msg, BorderLayout.CENTER);
+
+        Panel p = new Panel();
+        Button ok = new Button("OK");
+        ok.addActionListener(e -> dlg.dispose());
+        p.add(ok);
+        dlg.add(p, BorderLayout.SOUTH);
+
+        dlg.setSize(420, 140);
+        dlg.setLocationRelativeTo(this);
+        dlg.setVisible(true);
+    }
+@Override
+    public void actionPerformed(ActionEvent e) {
+        Object src = e.getSource();
+        if (src == addBtn) handleAdd();
+        else if (src == viewBtn) handleViewAll();
+        else if (src == searchBtn) handleSearch();
+        else if (src == deleteBtn) handleDelete();
+        else if (src == clearBtn) clearFields();
+        else if (src == exitBtn) {
+            dispose();
+            System.exit(0);
+        }
+    }
+static class Visitor {
+        int id;
+        String name;
+        String purpose;
+        String date;
+        String contact;
+           Visitor(int id, String name, String purpose, String date, String contact) {
+            this.id = id;
+            this.name = name;
+            this.purpose = purpose;
+            this.date = date;
+            this.contact = contact;
+        }
+    }
+  public static void main(String[] args) {
+        EventQueue.invokeLater(() -> {
+            VisitorManagementAWT app = new VisitorManagementAWT();
+            Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
+            app.setLocation((screen.width - app.getWidth()) / 2, (screen.height - app.getHeight()) / 2);
+        });
+    }
+}
+                                                 
